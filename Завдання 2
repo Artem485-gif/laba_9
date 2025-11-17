@@ -1,0 +1,185 @@
+import json
+import os
+
+FILE_NAME = 'teams.json'
+RESULT_FILE_NAME = 'result.json'
+
+# Функції для роботи з JSON-файлом
+def load_data():
+    """Завантаження даних із JSON-файлу. Обробка помилок."""
+    try:
+        with open(FILE_NAME, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"teams": []}
+    except json.JSONDecodeError:
+        return {"teams": []}
+
+def save_data(data):
+    try:
+        with open(FILE_NAME, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
+
+
+def display_content():
+    data = load_data()
+    if data.get('teams'):
+        for i, team in enumerate(data['teams']):
+            print(f"[{i+1}] Команда: {team['name']}, Очки: {team['points']}")
+    else:
+        print("Список команд порожній.")
+
+def add_record():
+    name = input("Введіть назву команди: ").strip()
+    points = input("Введіть кількість очок: ").strip()
+
+    if not name or not points:
+        return
+
+    try:
+        points = int(points)
+    except ValueError:
+        print("Кількість очок має бути числом.")
+        return
+
+    data = load_data()
+    new_team = {"name": name, "points": points}
+    data['teams'].append(new_team)
+
+    # Сортування за очками
+    data['teams'] = sorted(data['teams'], key=lambda x: x['points'], reverse=True)
+
+    if save_data(data):
+        print(f"Команда '{name}' успішно додана.")
+
+def delete_record():
+    search_name = input("Введіть назву команди для видалення: ").strip()
+    data = load_data()
+    initial_count = len(data.get('teams', []))
+
+    data['teams'] = [
+        team for team in data.get('teams', [])
+        if team.get('name', '').lower() != search_name.lower()
+    ]
+
+    deleted_count = initial_count - len(data['teams'])
+
+    if deleted_count > 0:
+        if save_data(data):
+            print(f"Успішно видалено {deleted_count} запис(и).")
+    else:
+        print("Команда не знайдена.")
+
+def search_by_field():
+    print("\n--- Пошук команди ---")
+    field = input("Шукати за (1) Назвою чи (2) Очками? Введіть 1 або 2: ").strip()
+
+    if field not in ['1', '2']:
+        return
+
+    if field == '1':
+        key, label = 'name', 'назві'
+    else:
+        key, label = 'points', 'кількості очок'
+
+    value = input(f"Введіть значення для пошуку за {label}: ").strip()
+
+    data = load_data()
+    found = []
+
+    for team in data.get('teams', []):
+        if field == '1':  # назва
+            if team['name'].lower() == value.lower():
+                found.append(team)
+        else:  # очки
+            try:
+                if team['points'] == int(value):
+                    found.append(team)
+            except ValueError:
+                print("Очки повинні бути числом.")
+                return
+
+    if found:
+        print(f"\nЗнайдено {len(found)} результат(ів):")
+        for t in found:
+            print(f"Команда: {t['name']}, Очки: {t['points']}")
+    else:
+        print("Нічого не знайдено.")
+
+def solve_variant_task():
+
+    print("\n--- Розв'язання завдання варіанту ---")
+    data = load_data()
+    results = {}
+
+    tenth_points_input = input("Введіть кількість очок 10-ї команди: ").strip()
+
+    try:
+        tenth_points = int(tenth_points_input)
+    except ValueError:
+        print("Очки повинні бути числом.")
+        return
+
+    sorted_list = sorted(data.get('teams', []), key=lambda x: x['points'], reverse=True)
+
+    # а) визначення місця
+    place = 1
+    for t in sorted_list:
+        if tenth_points < t['points']:
+            place += 1
+
+    # б) команди з меншими очками
+    weaker_teams = [t['name'] for t in sorted_list if t['points'] < tenth_points]
+
+    print(f"Місце 10-ї команди: {place}")
+    print("Команди з меншими очками:", weaker_teams)
+
+    results["tenth_team_points"] = tenth_points
+    results["place"] = place
+    results["weaker_teams"] = weaker_teams
+
+    # Запис у JSON
+    try:
+        with open(RESULT_FILE_NAME, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=4, ensure_ascii=False)
+        print(f"\nРезультати записано у файл '{RESULT_FILE_NAME}'.")
+    except Exception:
+        print("Помилка запису.")
+
+def main_menu():
+    while True:
+        print("\n" + "=" * 40)
+        print("МЕНЮ РОБОТИ З JSON (ФУТБОЛЬНІ КОМАНДИ)")
+        print("=" * 40)
+        print("1. Вивести список команд")
+        print("2. Додати команду")
+        print("3. Видалити команду")
+        print("4. Пошук (за полем)")
+        print("5. Розв'язати завдання (а та б) вашого варіанту")
+        print("0. Вихід")
+        print("-" * 40)
+
+        choice = input("Ваш вибір: ").strip()
+
+        if choice == '1':
+            display_content()
+        elif choice == '2':
+            add_record()
+        elif choice == '3':
+            delete_record()
+        elif choice == '4':
+            search_by_field()
+        elif choice == '5':
+            solve_variant_task()
+        elif choice == '0':
+            print("Завершення роботи.")
+            break
+        else:
+            print("Невірна опція!")
+
+
+if __name__ == "__main__":
+    main_menu()
